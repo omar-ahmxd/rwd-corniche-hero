@@ -1,0 +1,45 @@
+CORNICHE SCROLL HERO — ANCHOR SEQUENCE
+All frames 2752x1536 (16:9). Shared camera, shared city, shared plot.
+
+ANCHORS
+  01-site-empty.png       bare plot, no crane, day
+  02-foundation.png       excavation + crane, day
+  03-frame-mid.png        ~11 floors bare frame, crane left
+  04-frame-topped.png     ~15 floors bare frame, topped out
+  05-complete-day.png     finished tower, day
+  06-complete-dusk.png    finished tower, dusk
+  07-complete-night.png   finished tower, night, windows lit
+  08-aerial-night.png     high aerial night, rooftop futsal pitch
+
+CLIPS  (start -> end, prompt the MOTION only)
+  C1  01 -> 02   locked-off camera. ground excavated, foundations poured. clouds drift.
+  C2  02 -> 03   camera rises slowly. concrete floors stack upward. crane swings.
+  C3  03 -> 04   camera continues rising. remaining floors stack to full height.
+  C4  04 -> 05   camera pulls back slowly. facade forms bottom to top - glass, louvers,
+                 roof canopy last. crane removed.
+  C5  05 -> 06   locked-off camera. sunlight shifts through golden hour into dusk.
+  C6  06 -> 07   locked-off camera. sky darkens. windows illuminate floor by floor.
+  C7  07 -> 08   camera rises and tilts down toward the rooftop.
+  C8  08 -> ...  camera orbits the rooftop while descending. (end anchor not yet made)
+
+Every clip: "smooth continuous motion, no cuts, no text, 16:9"
+
+KNOWN ISSUES
+  03 -> 04  crane moves left to right between frames. Massing and bay grid match,
+            which matters more; at speed the crane relocation should not read.
+  04        a fresh excavation pit sits at the tower base-left. Wrong for a
+            topped-out stage. Worth one edit pass to remove it.
+  C8        no end anchor yet. Sequence stops at 08. A real orbit needs 3-4
+            rotational anchors descending around the tower, not one viewpoint.
+  overall   this chain is a generic tower in a generic city, not RWD Corniche.
+            05-08 carry some Corniche DNA (roof canopy, rooftop futsal in 08);
+            01-04 do not. Fine for testing the pipeline, not for delivery.
+
+RESOLVED
+  08        was a different city (curved highway, no lake/stadium). Regenerated
+            inside 07's city - landmarks now match, same bearing, push-in + tilt
+            down reads as a genuine camera move. Old plate: Downloads/c16x9.png
+
+REJECTED (left in Downloads)
+  Gemini_..._23rjye   excavation pit where the left mass belongs
+  Gemini_..._s2fm0i   narrow tower, different bay grid - would morph against 03
