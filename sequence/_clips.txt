@@ -2,44 +2,49 @@ CORNICHE SCROLL HERO — ANCHOR SEQUENCE
 All frames 2752x1536 (16:9). Shared camera, shared city, shared plot.
 
 ANCHORS
-  01-site-empty.png       bare plot, no crane, day
-  02-foundation.png       excavation + crane, day
-  03-frame-mid.png        ~11 floors bare frame, crane left
-  04-frame-topped.png     ~15 floors bare frame, topped out
-  05-complete-day.png     finished tower, day
-  06-complete-dusk.png    finished tower, dusk
-  07-complete-night.png   finished tower, night, windows lit
-  08-aerial-night.png     high aerial night, rooftop futsal pitch
+  01-foundation.png       excavation pit, rebar cages, red/yellow crane at LEFT, day
+  02-frame-mid.png        ~9 floors bare concrete frame, crane left, day
+  03-frame-topped.png     ~14 floors bare concrete frame, topped out, crane left, day
+  04-complete-day.png     finished tower, day
+  05-complete-night.png   finished tower, night, windows lit
+  06-aerial-night.png     high aerial night, rooftop futsal pitch
 
-CLIPS  (start -> end, prompt the MOTION only)
-  C1  01 -> 02   locked-off camera. ground excavated, foundations poured. clouds drift.
-  C2  02 -> 03   camera rises slowly. concrete floors stack upward. crane swings.
-  C3  03 -> 04   camera continues rising. remaining floors stack to full height.
-  C4  04 -> 05   camera pulls back slowly. facade forms bottom to top - glass, louvers,
-                 roof canopy last. crane removed.
-  C5  05 -> 06   locked-off camera. sunlight shifts through golden hour into dusk.
-  C6  06 -> 07   locked-off camera. sky darkens. windows illuminate floor by floor.
-  C7  07 -> 08   camera rises and tilts down toward the rooftop.
-  C8  08 -> ...  camera orbits the rooftop while descending. (end anchor not yet made)
+CLIPS  (start -> end, prompt the MOTION only — see prompts/clips.md)
+  C1  01 -> 02   camera rises slowly. concrete floors stack upward. cranes slew.
+  C2  02 -> 03   camera continues rising. remaining floors stack to full height.
+  C3  03 -> 04   camera pulls back slowly. facade forms bottom to top. crane removed.
+  C4  04 -> 05   locked-off camera. day into night. windows illuminate floor by floor.
+  C5  05 -> 06   camera rises and tilts down toward the rooftop.
 
 Every clip: "smooth continuous motion, no cuts, no text, 16:9"
 
+GENERATION
+  Google Flow, Veo 3.1 Quality, Frames mode (start + end), 16:9, 1080p, 8s, audio OFF.
+  Local generation was abandoned — every local model attempt failed. See CLAUDE.md.
+  ~100 credits per clip. 5 clips = 500.
+
+  Run C4 first. Locked-off camera, both anchors are true renders, nothing else can go
+  wrong. It answers the only question that matters: is the end frame being honoured?
+
+ORIGIN OF 02 AND 03
+  Both were produced by subtraction from 04-complete-day.png in Nano Banana Pro, so
+  the footprint, bay grid and city are inherited rather than reinvented. Diff against
+  04 confirms the change is confined to the plot (centre ~25/255, flanks ~12/255).
+  The crane is red-and-yellow at the LEFT edge in 01, 02 and 03 — no crane jump.
+
 KNOWN ISSUES
-  03 -> 04  crane moves left to right between frames. Massing and bay grid match,
-            which matters more; at speed the crane relocation should not read.
-  04        a fresh excavation pit sits at the tower base-left. Wrong for a
-            topped-out stage. Worth one edit pass to remove it.
-  C8        no end anchor yet. Sequence stops at 08. A real orbit needs 3-4
-            rotational anchors descending around the tower, not one viewpoint.
-  overall   this chain is a generic tower in a generic city, not RWD Corniche.
-            05-08 carry some Corniche DNA (roof canopy, rooftop futsal in 08);
-            01-04 do not. Fine for testing the pipeline, not for delivery.
+  C5        no end anchor beyond 06. A real rooftop orbit needs 3-4 rotational
+            anchors descending around the tower, not one viewpoint.
+  overall   the tower is NOT RWD Corniche and the city is not Egmore — it is a
+            generic tower in a generic masterplan (stadium, lake, white pavilion).
+            Accepted deliberately for its archviz quality. Before client delivery
+            this must be rebuilt with the real building; see CLAUDE.md.
+  04-06     day -> night happens in one clip with no dusk anchor between. Lighting
+            change only, no geometry change, so it should hold. If it dissolves,
+            add a dusk plate between 04 and 05.
 
-RESOLVED
-  08        was a different city (curved highway, no lake/stadium). Regenerated
-            inside 07's city - landmarks now match, same bearing, push-in + tilt
-            down reads as a genuine camera move. Old plate: Downloads/c16x9.png
-
-REJECTED (left in Downloads)
-  Gemini_..._23rjye   excavation pit where the left mass belongs
-  Gemini_..._s2fm0i   narrow tower, different bay grid - would morph against 03
+SUPERSEDED
+  _old/03-frame-mid-OLD.png   wide fat slab, wrong massing against the finished
+                              tower, would have morphed. Replaced.
+  Deleted from the old 8-plate set: 01-site-empty, 04-frame-topped (stray excavation
+  pit at tower base), 06-complete-dusk. All recoverable via git.

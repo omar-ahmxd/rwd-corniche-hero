@@ -1,7 +1,13 @@
 node_modules/
 .DS_Store
 Thumbs.db
-frames/
 out/
-*.mp4
-*.webm
+
+# Extracted PNG frame sequences — regenerable from clips/, ~750MB. Never commit.
+frames/
+
+# Raw client source video (60MB, over GitHub's warning threshold).
+# Kept locally; not in history.
+RWD Corniche at Pantheon Road Egmore Chennai.mp4
+
+# Generated clips ARE tracked — see clips/
