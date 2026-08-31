@@ -7,8 +7,8 @@ rooftop orbit. Scroll position is the timeline — there is no video element.
 ## The pipeline
 
 ```
-anchor stills  ->  Wan 2.2 FLF2V  ->  PNG frames  ->  RIFE  ->  upscale  ->  WebP  ->  canvas
-   (this repo)     (start+end)       (no MP4)      (smooth)   (detail)    (~1400px)  (web/)
+anchor stills  ->  Kling 3.0     ->  MP4  ->  PNG frames  ->  sample  ->  upscale  ->  WebP  ->  canvas
+   (this repo)     (start+end)       1080p    (ffmpeg)      (~250)     (detail)   (~1400px)  (web/)
 ```
 
 The whole design rests on one idea: **every clip is defined by two images, a start frame and an
@@ -16,14 +16,25 @@ end frame.** The model only invents the motion between them, so it cannot redraw
 Chain the clips — the end frame of one is the start frame of the next — and there are no seams
 to hide.
 
-## Why local, not a cloud tool
+This is now measured rather than assumed. A clip passes when its last frame diffs under
+~15/255 against the end anchor. See `CLAUDE.md`.
 
-Cloud generators hand you a compressed MP4 that you then extract frames from. That bakes in
-compression before the pipeline even starts, which is the exact fault this project exists to
-avoid. ComfyUI writes PNG sequences directly — no video file is ever created.
+## Why Kling
 
-It is also free, unlimited, watermark-free, and Apache 2.0, which settles the commercial
-licensing question for a client deliverable.
+Local generation was the original plan and every local model attempt failed. Google Flow was
+tested and rejected: Veo 3.1 on the AI Pro tier is 720p with a visible watermark burned into
+every frame, and both 1080p and watermark removal are gated behind the ~Rs 6,500/mo Ultra plan.
+
+Kling 3.0 Standard, at $6.99 for the first month, gives 1080p, brand watermark removal and
+commercial use. On the same anchors and the same prompt it also beat Veo on fidelity:
+
+|                        | Veo 3.1 (Flow) | Kling 3.0     |
+|------------------------|----------------|---------------|
+| resolution             | 1280x720       | 1928x1072     |
+| first frame vs anchor  | 14.96 / 255    | 9.09 / 255    |
+| last frame vs anchor   |  9.68 / 255    | 7.02 / 255    |
+
+Both test clips are in `clips/`.
 
 ## Repo map
 
@@ -32,30 +43,39 @@ licensing question for a client deliverable.
 | `sequence/` | The 8 anchor stills, in scroll order. The whole film is defined here. |
 | `sequence/_clips.txt` | Clip pairings, known issues, rejected plates. |
 | `anchors/` | Source renders pulled from the 2017 client brochure. |
-| `prompts/clips.md` | Every clip prompt, paste-ready. |
-| `docs/01-setup-5090.md` | CUDA, ComfyUI, Wan 2.2 on a 5090. Start here. |
+| `clips/` | Generated video clips. Frames are extracted from these, never committed. |
+| `prompts/clips.md` | Every clip prompt, paste-ready. Motion only. |
+| `prompts/anchors.md` | Anchor still prompts — master plate, subtraction, relighting. |
+| `docs/01-setup-5090.md` | Obsolete — local generation was abandoned. Kept for history. |
 | `docs/02-generate.md` | Generation settings and what to check. |
 | `docs/03-frames-to-web.md` | Frames -> RIFE -> upscale -> WebP -> the hero. |
 | `web/corniche-hero.html` | Working canvas rig. Open it in a browser. |
 
-## Quick start on the 5090
+## Quick start
 
-```bash
-git clone <this repo>
-cd rwd-corniche-hero
-```
+Read `CLAUDE.md` first — it carries every decision and the reasoning. Then:
 
-Then work through `docs/01-setup-5090.md`. Blackwell needs a current CUDA stack — that is the
-one thing that will stop you, and it is covered first.
+1. Generate a clip in Kling 3.0: VIDEO 3.0, **1080p**, 5s, 16:9, 1 output, Native Audio off.
+   Start and end frames from `sequence/sequence-clean/`. Prompt from `prompts/clips.md`.
+2. Extract frames: `ffmpeg -i clip.mp4 -vsync 0 -q:v 1 frames/x_%04d.png`
+3. Run the diff in `CLAUDE.md`. Under ~15/255 passes.
+4. Then `docs/03-frames-to-web.md`.
 
 ## Status
 
-- Anchors 01-08: complete, one consistent camera and city
-- Clips generated: 0 of 8
+- Anchors: eight unwatermarked plates in `sequence/sequence-clean/`
+- Clips generated: 1 of 7 (C4, as the method test — it passed)
 - Canvas rig: built, running on placeholder plates
 
 ## Known limitations
 
-Read `sequence/_clips.txt` before generating. In short: `04` still has a stray excavation pit,
-the crane jumps between `03` and `04`, the orbit has no end anchor yet, and plates `01-04` are a
-generic tower rather than Corniche itself — fine for proving the pipeline, not for delivery.
+Read `sequence/_clips.txt` and the open issues in `CLAUDE.md` before generating.
+
+The big one: **the tower in these anchors is not RWD Corniche and the city is not Egmore.** It
+is a generic tower in a generic masterplan, accepted deliberately for its archviz quality while
+the pipeline is proven. Rebuild from `gen2.jpeg` by subtraction before anything reaches the
+client — `prompts/anchors.md` has the prompts and `anchors/D-asbuilt-front.jpg` shows what the
+building actually looks like.
+
+Also: `04-frame-topped` still has a stray excavation pit at the tower base, and the rooftop
+orbit has no end anchor.

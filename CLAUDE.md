@@ -20,69 +20,177 @@ Do not raise it again.
 ## Decisions already made
 
 **Frame sequence on canvas, not a `<video>` element.** Scrubbing `video.currentTime` on scroll
-is unreliable across browsers, seeks are not frame-accurate, and codecs degrade under
-compression. A previous Veo-based attempt failed exactly this way.
+is unreliable across browsers and seeks are not frame-accurate.
 
 **Start frame + end frame conditioning is non-negotiable.** Every clip is defined by two
 images. The model only invents motion between them, so it cannot redraw the building. A tool
-without an end-frame slot is the wrong tool — no prompt wording compensates.
+without an end-frame slot is the wrong tool — no prompt wording compensates. This has now been
+measured, not assumed; see Acceptance test below.
 
-**Clips chain: end frame of N becomes start frame of N+1.** This removes seams entirely. An
-earlier plan for whip-pans and light-bloom wipes to disguise joins is obsolete — there are no
-joins to disguise.
+**Clips chain: end frame of N becomes start frame of N+1.** No seams to disguise.
 
-**Prompt the motion only.** Never describe the building. The anchors define it; describing it
-again gives the model permission to reinterpret it.
+**Prompt the motion only.** Never describe the building in a *clip* prompt. The anchors define
+it. (Anchor *stills* are a different job and do get described — see `prompts/anchors.md`.)
 
-**Build construction stages backwards by subtraction**, from the most complete plate:
-`complete -> unclad -> 2/3 -> 1/3 -> foundation -> empty`. Each step edits the previous image
-and removes something. Generating a stage fresh makes the footprint drift — this happened and
-had to be fixed.
+**Build construction stages backwards by subtraction**, from the most complete plate. Each step
+edits the previous image and removes something. Generating a stage fresh makes the footprint
+drift. Verify every subtraction with the diff below before accepting it.
 
-**Generate locally, not in the cloud.** Cloud tools return compressed MP4s you then extract
-frames from, baking in compression before the pipeline starts. ComfyUI writes PNG sequences
-directly. Also free, unlimited, watermark-free, Apache 2.0 — which settles commercial licensing
-for a client deliverable.
+**Generate video in Kling, not locally and not in Flow.** See the next two sections.
+
+## Tool decision — settled 2026-08-31
+
+**Local generation is dead.** Every local model attempt failed. The 5090 plan in the old
+version of this file is obsolete; do not restart it.
+
+**Google Flow / Veo 3.1 was tested and rejected.** Google AI Pro does not include 1080p or
+watermark removal — both are Ultra entitlements at ~Rs 6,500/mo. Pro output is 720p with a
+visible "Veo" wordmark burned into every frame.
+
+**Kling 3.0 on the Standard plan ($6.99 first month) is the tool.** It clears all three
+blockers on the cheapest tier: 1080p/4K, brand watermark removal, commercial use. First-last
+frame is what Kling is best at.
+
+Measured on the same two anchors, same prompt:
+
+|                        | Veo 3.1 (Flow) | **Kling 3.0** |
+|------------------------|----------------|---------------|
+| resolution             | 1280x720       | **1928x1072** |
+| first frame vs anchor  | 14.96 / 255    | **9.09 / 255**|
+| last frame vs anchor   |  9.68 / 255    | **7.02 / 255**|
+
+Both test clips are in `clips/` if you want to compare by eye.
+
+**Kling settings:** VIDEO 3.0, Mode **1080p** (not 4K — anchors are 2752px, 4K adds nothing and
+costs several times the credits), Length 5s, 16:9, 1 output, Native Audio off. **40 credits per
+clip.** Kling 3.0 exposes no negative-prompt field; the negatives are already inlined into the
+prompts as positive statements ("Locked-off camera, no movement", "Structure only — no facade").
+
+## Acceptance test — use this, do not judge by eye
+
+A clip passes if its last frame matches the end anchor. Measure it:
+
+```bash
+ffmpeg -i clip.mp4 -vsync 0 -q:v 1 frames/x_%04d.png
+python3 -c "
+from PIL import Image, ImageChops, ImageStat
+a=Image.open('sequence/END.png').convert('RGB')
+b=Image.open('frames/x_0121.png').convert('RGB').resize(a.size, Image.LANCZOS)
+print(sum(ImageStat.Stat(ImageChops.difference(a,b)).mean)/3)"
+```
+
+**Under ~15/255 is a pass.** Much of that residual is the resolution round-trip, not drift.
+Anything far above means the tool is treating the anchor as a suggestion.
+
+The same diff, run per-third across the frame, is how subtraction edits are verified: the
+change must be confined to the plot (centre ~25/255) with the city held (flanks ~12/255).
+
+A beautiful clip that ends on a different building is a failure. An ugly one that lands on the
+anchor is a pass.
+
+## Watermarks
+
+Google applies visible marks on the Pro tier and removes them only on Ultra — the Veo wordmark
+on video, the Gemini sparkle on Nano Banana Pro stills. **The sparkle was baked into the
+original anchors** and propagated into every clip generated from them.
+
+`sequence/sequence-clean/` holds an unwatermarked regeneration of all eight plates, same camera
+and same city. **Generate against those, not against `sequence/`.**
+
+Kling's own "KlingAI 3.0" mark is removed via the download menu on the Standard plan.
+
+Do not strip watermarks from marked assets — regenerate on a surface that does not apply them.
+
+## Payload caps sharpness, not the model
+
+250 frames as WebP: ~25MB at 1400px, ~50MB at 1920px, ~87MB at 2560px. A 50MB hero is
+unshippable, so **1080p source already exceeds what the pipeline can carry.** If the hero looks
+soft, the answer is never a bigger subscription. In order:
+
+1. **Fewer frames, bigger** — 120 frames at 1920px weighs the same as 250 at 1400px, and scroll
+   scrub only needs to feel responsive, not hit 24fps.
+2. **Sharp at rest, soft in motion** — put full-resolution anchor stills at the scroll positions
+   where people stop; nobody inspects detail mid-scrub.
+3. **Do not run it full-bleed** — 1400px in a contained frame reads crisp; stretched across a
+   27" monitor it reads soft. Free, and it is a layout decision.
+
+Settle the hero's rendered size before generating more clips; that number decides all of the
+above.
+
+## The building in the anchors is not RWD Corniche
+
+The whole `sequence/` set is a generic tower in a generic masterplan — eight-lane boulevards, a
+cricket stadium, an artificial lake, a Zaha-style pavilion. It is not Chennai and the tower is
+not Corniche. **This is accepted deliberately for its archviz quality while proving the
+pipeline. It cannot ship to RWD as-is.**
+
+The real building, from `anchors/D-asbuilt-front.jpg` (a real construction photograph):
+
+- Two tall wings **splaying outward in a shallow V**, meeting at a recessed central slot
+- **Dark charcoal** facade panels — not cream; `images.jpeg` only reads cream because the
+  perforated screens are backlit amber at night
+- Warm **timber-toned vertical strips** at the inner edge of each wing, full height
+- **Grey geometric perforated jali** panels on the outer faces
+- Irregular punched square windows
+- **Open stilted ground floor** on white columns
+- Each wing topped by its own **open hollow rectangular pergola crown** — sky visible straight
+  through. Not a solid roof. This and the two-wing massing are the identity; everything else is
+  detail.
+
+`gen2.jpeg` is the best asset in the repo for this — the real massing, real facade, real Egmore,
+at 2752x1536, generated with Nano Banana Pro from the as-built photo. Rebuild the anchor chain
+from it by subtraction when the client version is due. `prompts/anchors.md` has the prompts.
 
 ## Tried and rejected
 
-- **Meshy / Backflip AI** — Meshy is object-scale game props and hallucinates unseen faces;
-  Backflip is scan-to-CAD for mechanical parts. Neither handles buildings.
-- **01 -> 07 as a single clip** — dissolves rather than builds. Span too long.
-- **Cross-dissolving two stills** as the hero — technically works (the day and dusk renders
-  share a camera) but was rejected as too cheap-looking. Kept only as a fallback; the rig is
-  in `web/`.
-- **16:9 cropping the square renders** — destroys either the pergola crown or the base. The
-  tower must be outpainted sideways, never cropped vertically.
-- **Kling** — account banned. Appeal pending.
-- **Gemini app for video** — single image slot only, so the end frame is ignored.
+- **Local generation (ComfyUI / Wan 2.2 FLF2V)** — every attempt failed. Obsolete.
+- **Google Flow / Veo 3.1** — 720p and watermarked on Pro. See above.
+- **Higgsfield** — camera-motion presets are its strength; end-frame conditioning is per-model
+  and not the point of the product. Pro tier ($23/mo) needed before 1080p. Wrong tool.
+- **Google Earth Studio** for a space-to-Egmore opening — India has essentially no 3D building
+  mesh, so only top-down and steep angles work; obliques smear. Also non-commercial/editorial by
+  default with mandatory attribution. Parked.
+- **Meshy / Backflip AI** — object-scale props and scan-to-CAD. Neither handles buildings.
+- **Single clip across the whole span** — dissolves rather than builds.
+- **Cross-dissolving two stills** as the hero — too cheap-looking. Fallback rig in `web/`.
+- **16:9 cropping the square renders** — destroys either the pergola crown or the base. Outpaint
+  sideways, never crop vertically. `SHOT_F_ending_16x9.jpg` is an example of this mistake.
+- **Gemini app / Flow reference tray for video** — references are not end-frame conditioning.
 
 ## Current state
 
-- Anchors 01-08 complete, one consistent camera and city (`sequence/`)
-- Clips generated: 0 of 8
-- Canvas rig built and working on two plates (`web/corniche-hero.html`)
-- Hardware: moving to an RTX 5090 (32GB). Previous machine was a 3070 Ti (8GB).
+- `sequence/` — six anchors, renumbered contiguously, still carrying the Gemini sparkle
+- `sequence/sequence-clean/` — eight unwatermarked plates, **use these**
+- `clips/` — C4 generated twice, Veo and Kling, for comparison
+- Clips generated: 1 of 7 (C4 only, as the method test — it passed)
+- Canvas rig built and working (`web/corniche-hero.html`)
+- Kling Standard plan, ~711 credits left. 7 clips = 280 credits.
 
 ## Next action
 
-Generate **C5** (`05-complete-day` -> `06-complete-dusk`). Locked-off camera, both anchors are
-true renders, lowest risk in the set. It tests whether end-frame conditioning holds before
-anything else is worth generating.
+Regenerate **C4** against `sequence-clean/` (the current one used the watermarked anchors), then
+work through the remaining six. Run the diff on each before moving on.
 
 ## Open issues
 
-- `04-frame-topped.png` has a stray excavation pit at the tower base
-- Crane jumps left-to-right between 03 and 04 (accepted — massing consistency matters more)
-- C8 has no end anchor; a real orbit needs 3-4 rotational plates
-- **Plates 01-04 are a generic tower, not Corniche.** Fine for proving the pipeline. Rebuild
-  from `anchors/A-day.jpg` by subtraction before anything reaches the client.
-- Client still owes: full-size `-Hi-res` originals from their media library, photography of the
-  delivered building, current unit sizes/price sheet, and an answer on 3D model files.
+- `sequence-clean/04-frame-topped.png` still has a **stray excavation pit** at the tower base —
+  wrong for a topped-out stage, and it will read as the site being dug up after topping out. One
+  subtraction edit fixes it. Do this before generating C3 and C4.
+- Rooftop orbit has no end anchor; it needs 3-4 rotational plates, not one viewpoint.
+- **The tower is not Corniche and the city is not Egmore.** Rebuild from `gen2.jpeg` before
+  client delivery. This is the single biggest gap between the repo and something deliverable.
+- Indian real-estate advertising rules are specific about depicting a project's surroundings.
+  Worth one conversation with RWD before a film showing a fictional neighbourhood ships.
+- Client still owes: full-size `-Hi-res` originals, photography of the delivered building,
+  current unit sizes and price sheet, and an answer on 3D model files.
 
 ## Working notes
 
 - Sources are 960px from a 2017 brochure PDF — soft on large displays
-- Payload, not model quality, caps delivery: target ~1400px frames, WebP, 200-300 total
+- Target ~1400px frames, WebP, 200-300 total — but see "Payload caps sharpness"
 - Upscale after extraction, never before
+- `frames/` is gitignored — ~750MB of extracted PNGs, regenerable from `clips/`
+- The 60MB raw client video is gitignored; it is over GitHub's warning threshold
+- Paste prompts as **one line** — copied line breaks eat spaces and produce tokens like
+  "lighttrails", which degrade the result
 - The user wants direct answers and working output, not options surveys

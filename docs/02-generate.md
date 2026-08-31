@@ -4,15 +4,25 @@
 
 | Setting | Value | Why |
 |---|---|---|
-| Resolution | 720p testing, 1080p final | Payload caps delivery near 1400px anyway |
+| Resolution | **1080p** (not 4K) | Anchors are 2752px; 4K adds nothing and costs several times the credits |
 | Aspect | 16:9 | Anchors are already 2752x1536 |
-| Length | ~4-5s per clip | 8 clips x 5s = 40s of footage; you need ~250 frames total |
-| Output | **PNG sequence** | Never MP4. This is the point of running locally. |
-| Seed | record it | You will want to reproduce the good ones |
+| Length | 5s per clip | 7 clips x 5s = ~850 frames; you need ~250 total, so sample down |
+| Output | MP4, extract to PNG immediately | Local PNG output is gone; extract before any re-encode |
+| Cost | 40 credits per clip (Kling Standard) | 7 clips = 280 |
+
+## Tool
+
+**Kling 3.0**, VIDEO 3.0, Frames mode (start + end), 16:9, 1 output, Native Audio off.
+No negative-prompt field exists in 3.0 — the negatives are inlined into the prompts as
+positive statements. Local generation and Google Flow were both tried and rejected; see
+`CLAUDE.md`.
+
+Use the anchors in `sequence/sequence-clean/` — the ones in `sequence/` carry a Gemini
+sparkle watermark that propagates into every clip.
 
 ## Order
 
-Run **C5 first** (`05-complete-day` -> `06-complete-dusk`). Locked-off camera, both anchors are
+Run the locked-off day-to-night clip first (`05-complete-day` -> `06-complete-dusk`). Locked-off camera, both anchors are
 true renders, nothing else can go wrong. It answers the only question that matters: is the end
 frame actually being honoured?
 
